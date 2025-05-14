@@ -1,0 +1,133 @@
+﻿@model MembersDto
+@{
+    ViewData["Title"] = "Register";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@ViewData["Title"]</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        .register-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            text-align: center;
+        }
+
+            .register-container h2 {
+                margin-bottom: 20px;
+                color: #333;
+            }
+
+            .register-container label {
+                display: block;
+                text-align: left;
+                margin-bottom: 10px;
+                color: #555;
+            }
+
+            .register-container input[type="text"],
+            .register-container input[type="password"],
+            .register-container select {
+                width: calc(100% - 20px);
+                padding: 10px;
+                margin-bottom: 15px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+
+            .register-container button {
+                width: 100%;
+                padding: 10px;
+                background-color: #007bff;
+                border: none;
+                color: #fff;
+                cursor: pointer;
+                border-radius: 3px;
+                font-size: 16px;
+            }
+
+                .register-container button:hover {
+                    background-color: #0056b3;
+                }
+    </style>
+    <script src="~/lib/jquery/dist/jquery.js"></script>
+</head>
+<body>
+    <div class="register-container">
+        <h2>UserManagerSystem - Register</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label asp-for="UserName">UserName</label>
+                <input asp-for="UserName" class="form-control" required />
+                <span id="UserName-error" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Email">Email</label>
+                <input asp-for="Email" class="form-control" required />
+                <span id="Email-error" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ParentMemberUserName">ParentMemberUserName</label>
+                <input asp-for="ParentMemberUserName" class="form-control" type="text" />
+                <span id="ParentMemberUserName-error" class="text-danger"></span>
+            </div>
+            <button type="button" id="registerBtn" class="btn btn-primary">Register</button>
+        </form>
+        <a href="~/AccountView/Login" class="register-link">Already have an account? Log in.</a>
+        <div id="validationSummary" class="validation-summary-errors" style="display: none;"></div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // 注册按钮点击事件
+            $('#registerBtn').on('click', function () {
+                const formData = {
+                    UserName: $('#UserName').val(),
+                    Email: $('#Email').val(),
+                    ParentMemberUserName: $('#ParentMemberUserName').val()
+                };
+
+                // 清空错误信息
+                $('.text-danger').text('');
+                $('#validationSummary').hide().empty();
+
+                // 使用 AJAX 提交表单数据
+                $.ajax({
+                    url: `@(ViewBag.ApiHost)/module/Account/register`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function (response) {
+                        if (response.done) {
+                            alert('Registration successful.');
+                            window.location.href="/AccountView/VerifyEmailPage";
+                        } else {
+                            const errors = response.msg;
+                            $('#validationSummary').show().append(`<span>An error occurred: ${errors}</span><br />`);
+                        }
+                    },
+                    error: function (error) {
+                        $('#validationSummary').show().append(`<span>An error occurred: ${error.statusText}</span><br />`);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

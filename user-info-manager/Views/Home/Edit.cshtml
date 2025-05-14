@@ -1,0 +1,171 @@
+﻿@model UserInfoManager.Models.UserAddress
+
+@{
+    ViewData["Title"] = "Edit User Address";
+}
+
+<!-- 引入 jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<!-- 引入 jQuery UI 库 -->
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+<h1>Edit User Address</h1>
+
+<form id="editAddressForm">
+    <input type="hidden" id="Id" />
+    <div class="form-group">
+        <label for="AddressType">AddressType</label>
+        <select id="AddressType" class="form-control" required>
+            <option value="HOM">Home</option>
+            <option value="COM">Company</option>
+            <option value="BIL">Billing</option>
+            <option value="SHI">Shipping</option>
+            <option value="EMG">Emergency</option>
+            <option value="SCH">School</option>
+        </select>
+        <span id="AddressType-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Address1">Address1</label>
+        <input type="text" id="Address1" class="form-control" required />
+        <span id="Address1-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Address2">Address2</label>
+        <input type="text" id="Address2" class="form-control" required />
+        <span id="Address2-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Address3">Address3</label>
+        <input type="text" id="Address3" class="form-control" required />
+        <span id="Address3-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="City">City</label>
+        <input type="text" id="City" class="form-control" required />
+        <span id="City-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="PostCode">PostCode</label>
+        <input type="text" id="PostCode" class="form-control" required />
+        <span id="PostCode-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="RegionalCouncil">RegionalCouncil</label>
+        <input type="text" id="RegionalCouncil" class="form-control" required />
+        <span id="RegionalCouncil-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="State">State</label>
+        <input type="text" id="State" class="form-control" required />
+        <span id="State-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Country">Country</label>
+        <select id="Country" class="form-control" required>
+            <!-- 这里会动态添加国家选项 -->
+        </select>
+        <span id="Country-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label>PublicPrivate</label>
+        <input type="radio" checked id="publicOption" name="PublicPrivate" value="1" class="form-check-input" required>
+        <label for="publicOption" class="form-check-label">Public</label>
+        <input type="radio" id="privateOption" name="PublicPrivate" value="2" class="form-check-input" required>
+        <label for="privateOption" class="form-check-label">Private</label>
+        <span id="PublicPrivate-error" class="text-danger"></span>
+    </div>
+    <button type="button" id="saveAddressBtn" class="btn btn-primary">Save</button>
+</form>
+
+<script>
+    $(document).ready(function () {
+        const token = localStorage.getItem('jwtToken');
+
+        $.ajaxSetup({
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const addressId = urlParams.get('id');
+
+        if (addressId) {
+            $('#Id').val(addressId);
+
+            // 获取国家列表
+            $.ajax({
+                url: `@(ViewBag.ApiHost)/module/Lookups/get-lookups?lookupType=Country`,
+                type: 'GET',
+                success: function (data) {
+                    const countries = data.data;
+                    const countrySelect = $('#Country');
+                    countries.forEach(country => {
+                        countrySelect.append(`<option value="${country.lookupID}">${country.description}</option>`);
+                    });
+
+                    $.ajax({
+                        url: `@(ViewBag.ApiHost)/module/Account/get-address/${addressId}`,
+                        type: 'GET',
+                        success: function (data) {
+                            // 填充表单数据
+                            $('#AddressType').val(data.data.addressType);
+                            $('#Address1').val(data.data.address1);
+                            $('#Address2').val(data.data.address2);
+                            $('#Address3').val(data.data.address3);
+                            $('#City').val(data.data.city);
+                            $('#PostCode').val(data.data.postCode);
+                            $('#RegionalCouncil').val(data.data.regionalCouncil);
+                            $('#State').val(data.data.state);
+                            const selectedCountryId = data.data.country;
+                            $('#Country option').each(function () {
+                                if ($(this).val() === selectedCountryId.toString()) {
+                                    $(this).prop('selected', true);
+                                }
+                            });
+                            $('input[name="PublicPrivate"][value="' + data.data.publicPrivate + '"]').prop('checked', true);
+                        },
+                        error: function (error) {
+                            console.error('Error getting address data:', error);
+                        }
+                    });
+                },
+                error: function (error) {
+                    console.error('Error getting countries:', error);
+                }
+            });
+        }
+
+        $('#saveAddressBtn').on('click', function () {
+            const formData = {
+                AddressID: $('#Id').val(),
+                AddressType: $('#AddressType').val(),
+                Address1: $('#Address1').val(),
+                Address2: $('#Address2').val(),
+                Address3: $('#Address3').val(),
+                City: $('#City').val(),
+                PostCode: $('#PostCode').val(),
+                RegionalCouncil: $('#RegionalCouncil').val(),
+                State: $('#State').val(),
+                Country: $('#Country').val(),
+                PublicPrivate: $('input[name="PublicPrivate"]:checked').val()
+            };
+
+            $.ajax({
+                url: `@(ViewBag.ApiHost)/module/Account/update-address`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function (response) {
+                    alert('Address updated successfully.');
+                },
+                error: function (error) {
+                    console.error('Error updating address:', error);
+                    alert('Failed to update address. Please try again later.');
+                }
+            });
+        });
+    });
+</script>

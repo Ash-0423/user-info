@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>login</title>
+    <script src="~/lib/jquery/dist/jquery.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        .login-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            text-align: center;
+        }
+
+            .login-container h2 {
+                margin-bottom: 20px;
+                color: #333;
+            }
+
+            .login-container label {
+                display: block;
+                text-align: left;
+                margin-bottom: 10px;
+                color: #555;
+            }
+
+            .login-container input[type="text"],
+            .login-container input[type="password"] {
+                width: calc(100% - 20px);
+                padding: 10px;
+                margin-bottom: 15px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+
+            .login-container button {
+                width: 100%;
+                padding: 10px;
+                background-color: #007bff;
+                border: none;
+                color: #fff;
+                cursor: pointer;
+                border-radius: 3px;
+                font-size: 16px;
+                margin-top: 10px; /* 添加按钮与表单之间的间距 */
+            }
+
+                .login-container button:hover {
+                    background-color: #0056b3;
+                }
+
+        .register-link {
+            display: block;
+            margin-top: 10px;
+            text-decoration: none;
+            color: #007bff;
+        }
+
+            .register-link:hover {
+                text-decoration: underline;
+            }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>UserManagerSystem - Login</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="text" id="email" name="Email" class="form-control" />
+                <span id="emailError" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+
+        <a href="~/AccountView/Register" class="register-link">Register</a>
+        <div id="validationSummary" class="text-danger"></div>
+    </div>
+    <script>
+        $(document).ready(function () {
+            // 监听表单提交事件
+            $('#loginForm').on('submit', function (e) {
+                // 阻止默认的表单提交行为
+                e.preventDefault();
+                var email = $('#email').val();
+                $('#emailError').text('');
+                $('#validationSummary').text('');
+                $.ajax({
+                    url: '@(ViewBag.ApiHost)/module/Account/Login', // 替换为实际的登录接口地址
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ Email: email }),
+                    success: function (response) {
+                        if (response.done === 1 && response.token) {
+                            // 登录成功，保存 JWT 令牌到本地存储
+                            localStorage.setItem('jwtToken', response.token);
+                            // 重定向到主页
+                            window.location.href = '/Home/Index';
+                        } else {
+                            // 显示通用的错误信息
+                            $('#validationSummary').text(response.msg);
+                        }
+                    },
+                    error: function (error) {
+                        // 处理登录失败的情况
+                        if (error.responseJSON && error.responseJSON.errors) {
+                            // 显示具体的错误信息
+                            var errors = error.responseJSON.errors;
+                            if (errors.Email) {
+                                $('#emailError').text(errors.Email[0]);
+                            }
+                            if (errors.Password) {
+                                $('#passwordError').text(errors.Password[0]);
+                            }
+                        } else {
+                            // 显示通用的错误信息
+                            $('#validationSummary').text('loginfail');
+                        }
+                    }
+                });
+            });
+
+            // 在每次发送 AJAX 请求时添加 JWT 令牌到请求头
+            $(document).ajaxSend(function (event, jqXHR, settings) {
+                var token = localStorage.getItem('jwtToken');
+                if (token) {
+                    jqXHR.setRequestHeader('Authorization', 'Bearer ' + token);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

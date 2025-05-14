@@ -1,0 +1,87 @@
+﻿@model UserInfoManager.Models.UserAddress
+
+@{
+    ViewData["Title"] = "Create User Contact";
+}
+
+<script src="~/lib/jquery/dist/jquery.js"></script>
+<h1>Create User Contact</h1>
+
+<form id="createConnectForm">
+    <div class="form-group">
+        <label for="ContactType">ContactType</label>
+        <select id="ContactType" class="form-control" required>
+            <option value="Number">Number</option>
+            <option value="Email">Email</option>
+        </select>
+        <span id="ContactType-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="ContactDetail">ContactDetail</label>
+        <input type="text" id="ContactDetail" class="form-control" />
+        <span id="ContactDetail-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Notes">Notes</label>
+        <input type="text" id="Notes" class="form-control" />
+        <span id="Notes-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label>PublicPrivate</label>
+        <input type="radio" checked id="publicOption" name="PublicPrivate" value="1" class="form-check-input" required>
+        <label for="publicOption" class="form-check-label">Public</label>
+        <input type="radio" id="privateOption" name="PublicPrivate" value="2" class="form-check-input" required>
+        <label for="privateOption" class="form-check-label">Private</label>
+        <span id="PublicPrivate-error" class="text-danger"></span>
+    </div>
+    <button type="button" id="createConnectBtn" class="btn btn-primary">Create</button>
+    <div id="validationSummary" class="validation-summary-errors" style="display: none;"></div>
+</form>
+
+<script>
+    $(document).ready(function () {
+        const token = localStorage.getItem('jwtToken');
+
+        $.ajaxSetup({
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+        // 创建按钮点击事件
+        $('#createConnectBtn').on('click', function () {
+            const formData = {
+                ContactType: $('#ContactType').val(),
+                ContactDetail: $('#ContactDetail').val(),
+                Notes: $('#Notes').val(),
+                PublicPrivate: $('input[name="PublicPrivate"]:checked').val()
+            };
+
+            // 清空错误信息
+            $('.text-danger').text('');
+            $('#validationSummary').hide().empty();
+
+            $.ajax({
+                url: `@(ViewBag.ApiHost)/module/account/create-connect`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function (response) {
+                    alert('contact created successfully.');
+                    // 清空表单
+                    $('#createConnectForm')[0].reset();
+                },
+                error: function (error) {
+                    if (error.responseJSON && error.responseJSON.errors) {
+                        const errors = error.responseJSON.errors;
+                        for (const field in errors) {
+                            const errorMessage = errors[field][0];
+                            $(`#${field}-error`).text(errorMessage);
+                        }
+                    } else {
+                        $('#validationSummary').show().append(`<span>An error occurred: ${error.statusText}</span><br />`);
+                    }
+                }
+            });
+        });
+    });
+</script>    

@@ -1,0 +1,61 @@
+﻿@{
+    ViewData["Title"] = "Verify Email";
+}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"]</title>
+    <script src="~/lib/jquery/dist/jquery.js"></script>
+</head>
+
+<body>
+    <h1>Verify Email</h1>
+    <p>Please enter the verification code you received to complete the email verification.</p>
+    <form id="verifyEmailForm" method="post" asp-action="VerifyEmailCode">
+        <div class="form-group">
+            <label for="code">Verification Code</label>
+            <input type="text" id="code" name="code" class="form-control" required />
+            <span id="code-error" class="text-danger"></span>
+        </div>
+        <button type="button" id="verifyBtn" class="btn btn-primary">Verify</button>
+    </form>
+    <div id="validationSummary" class="validation-summary-errors" style="display: none;"></div>
+
+    <script>
+        $(document).ready(function () {
+            // 验证按钮点击事件
+            $('#verifyBtn').on('click', function () {
+                const formData = {
+                    code: $('#code').val()
+                };
+
+                // 清空错误信息
+                $('.text-danger').text('');
+                $('#validationSummary').hide().empty();
+
+                $.ajax({
+                    url: `@(ViewBag.ApiHost)/module/account/verify-email?code=`+$('#code').val(),
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function (response) {
+                        if (response.done) {
+                            alert('Email verification successful.');
+                            window.location.href="/AccountView/Login";
+                        } else {
+                            alert('Email verification fail.'+response.msg);
+                        }
+                    },
+                    error: function (error) {
+                        $('#validationSummary').show().append(`<span>An error occurred: ${error.statusText}</span><br />`);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

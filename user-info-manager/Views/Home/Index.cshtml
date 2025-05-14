@@ -1,0 +1,842 @@
+﻿@using System.Security.Claims
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@ViewData["Title"] - Cobble</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/lib/jquery/dist/jquery.js"></script>
+    <script>
+        $(document).ready(function() {
+             // 初始隐藏注册表单
+            $('#registerForm').hide();
+
+            // 点击“注册”按钮显示注册表单
+            $('#showRegisterForm').on('click', function() {
+                $('#loginForm').hide();
+                $('#registerForm').show();
+            });
+
+            // 点击“返回登录”按钮显示登录表单
+            $('#showLoginForm').on('click', function() {
+                $('#registerForm').hide();
+                $('#loginForm').show();
+            });
+
+            const token = localStorage.getItem('jwtToken');
+            $.ajaxSetup({
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            function getUserData() {
+                $.ajax({
+                    url: '@(ViewBag.ApiHost)/module/account/get-user',
+                    type: 'GET',
+                    success: function(userData) {
+                        $('.user-name').text(userData.data.firstName || userData.data.userName);
+                        $('#updateUserForm input[name="UserName"]').val(userData.data.userName);
+                        $('#updateUserForm input[name="Name"]').val(userData.data.name);
+                        $('#updateUserForm input[name="Name_Last"]').val(userData.data.name_Last);
+                        $('#updateUserForm input[name="ProfileIntroduction"]').val(userData.data.profileIntroduction);
+                        $('#updateUserForm input[name="Type"]').val(userData.data.type);
+                        $('#userEmail').text(userData.data.email);
+                    },
+                    error: function(error) {
+                        console.error('Error getting user data:', error);
+                    }
+                });
+            }
+
+            // 加载地址数据
+            function loadAddresses() {
+                $.ajax({
+                    url: '@(ViewBag.ApiHost)/module/account/get-address',
+                    type: 'GET',
+                    success: function(data) {
+                        const addressTableBody = $('#addressTableBody');
+                        addressTableBody.empty();
+                        if (data.data.length > 0) {
+                            data.data.forEach(function(address) {
+                                const row = `
+                                    <tr>
+                                        <td>${address.addressType}</td>
+                                        <td>${address.city}</td>
+                                        <td>${address.postCode}</td>
+                                        <td>${address.description}</td>
+                                        <td>
+                                            <a href="/home/edit?id=${address.addressID}" class="btn btn-secondary" style="padding: 0.3rem 0.8rem; margin-right: 0.5rem;">
+                                                <i class="fa fa-edit"></i>Edit
+                                            </a>
+                                              <a href="javascript:void(0);" data-id="${address.addressID}" class="btn btn-error delete-address" style="padding: 0.3rem 0.8rem;">
+                                                    <i class="fa fa-trash"></i>Delete
+                                                </a>
+                                        </td>
+                                    </tr>
+                                `.replace(/-1/g, address.addressID);
+                                addressTableBody.append(row);
+                            });
+                        } else {
+                            $('#addressTable').hide();
+                            $('#noAddressesMessage').show();
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error loading addresses:', error);
+                    }
+                });
+            }
+
+            function loadConnect() {
+                $.ajax({
+                    url: '@(ViewBag.ApiHost)/module/Account/get-connect',
+                    type: 'GET',
+                    success: function (data) {
+                        const connectTableBody = $('#connectTableBody');
+                        connectTableBody.empty();
+                        if (data.data.length > 0) {
+                            data.data.forEach(function (connect) {
+                                let actionButtons = `
+                                    <a href="/home/editConnect?id=${connect.contactID}" class="btn btn-secondary" style="padding: 0.3rem 0.8rem; margin-right: 0.5rem;">
+                                        <i class="fa fa-edit"></i>Edit
+                                    </a>
+                                    <a href="javascript:void(0);" data-id="${connect.contactID}" class="btn btn-error delete-connect" style="padding: 0.3rem 0.8rem;">
+                                        <i class="fa fa-trash"></i>Delete
+                                    </a>
+                                `;
+                                if (connect.verified === true) {
+                                    actionButtons = '';
+                                }
+                                const row = `
+                                    <tr>
+                                        <td>${connect.contactType == null? '' : connect.contactType}</td>
+                                        <td>${connect.contactDetail == null? '' : connect.contactDetail}</td>
+                                        <td>${connect.verified == null? '' : connect.verified}</td>
+                                        <td>${connect.notes == null? '' : connect.notes}</td>
+                                        <td>${(connect.publicPrivate == null? '' : connect.publicPrivate)}</td>
+                                        <td>${connect.postDate == null? '' : connect.postDate}</td>
+                                        <td>${actionButtons}</td>
+                                    </tr>
+                                `.replace(/-1/g, connect.contactID);
+                                connectTableBody.append(row);
+                            });
+                        } else {
+                            $('#connectTable').hide();
+                            $('#noConnectMessage').show();
+                        }
+                    },
+                    error: function (error) {
+                        console.error('Error loading addresses:', error);
+                    }
+                });
+            }
+
+            // 为删除地址按钮添加点击事件
+            $(document).on('click', '.delete-address', function() {
+                const id = $(this).data('id');
+                if (confirm('Are you sure you want to delete this address?')) {
+                    $.ajax({
+                        url:  `@(ViewBag.ApiHost)/module/Account/user-address/${id}`,
+                        type: 'DELETE',
+                        success: function(response) {
+                            alert('Address deleted successfully.');
+                            loadAddresses();
+                        },
+                        error: function(error) {
+                            console.error('Error deleting address:', error);
+                            alert('Failed to delete address. Please try again later.');
+                        }
+                    });
+                }
+            });
+
+            // 为删除链接按钮添加点击事件
+            $(document).on('click', '.delete-connect', function() {
+                const id = $(this).data('id');
+                if (confirm('Are you sure you want to delete this contact?')) {
+                    $.ajax({
+                        url: `@(ViewBag.ApiHost)/module/Account/user-connect/${id}`,
+                        type: 'DELETE',
+                        success: function(response) {
+                            alert('contact deleted successfully.');
+                            loadConnect();
+                        },
+                        error: function(error) {
+                            console.error('Error deleting contact:', error);
+                            alert('Failed to delete contact. Please try again later.');
+                        }
+                    });
+                }
+            });
+
+            // 提交更新用户信息表单
+            $('#saveMemberInfo').on('click', function(e) {
+                e.preventDefault();
+                const formData = {
+                    UserName:$('#updateUserForm input[name="UserName"]').val(),
+                    Name: $('#updateUserForm input[name="Name"]').val(),
+                    Name_Last: $('#updateUserForm input[name="Name_Last"]').val(),
+                    ProfileIntroduction: $('#updateUserForm input[name="ProfileIntroduction"]').val(),
+                    Type: $('#updateUserForm input[name="Type"]').val(),
+                };
+                $.ajax({
+                    url: '@(ViewBag.ApiHost)/module/account/update-user',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        getUserData();
+                        alert('User information updated successfully.');
+                    },
+                    error: function(error) {
+                        console.error('Error updating user information:', error);
+                        alert('Failed to update user information. Please try again later.');
+                    }
+                });
+            });
+
+            document.getElementById('registerSubmitForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                var username = document.getElementById('username').value;
+                var firstName = document.getElementById('firstName').value;
+                var lastName = document.getElementById('lastName').value;
+                var email = document.getElementById('email').value;
+                var birthDate = document.getElementById('birthDate').value;
+                var password = document.getElementById('password').value;
+                var confirmPassword = document.getElementById('confirmPassword').value;
+
+                var data = {
+                    "Username": username,
+                    "FirstName": firstName,
+                    "LastName": lastName,
+                    "Email": email,
+                    "birthDate": birthDate,
+                    "Password": password,
+                    "ConfirmPassword": confirmPassword
+                };
+
+                fetch('http://170.64.242.43.nip.io/mm2/Auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if(result.error){
+                        alert(result.error);
+                    }else{
+                        console.log(result);
+                        document.getElementById('registerForm').style.display = 'none';
+                        document.getElementById('loginForm').style.display = 'block';
+                    }
+                })
+                .catch(error =>alert(error));
+            });
+
+            document.getElementById('loginSubmitForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                var loginUsername = document.getElementById('loginUsername').value;
+                var loginPassword = document.getElementById('loginPassword').value;
+
+                var loginData = {
+                    "Username": loginUsername,
+                    "Password": loginPassword
+                };
+
+                fetch('http://170.64.242.43.nip.io/mm2/Auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(loginData)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if(result.error){
+                        alert(result.error);
+                    }else{
+                        var loginResultDiv = document.getElementById('loginResult');
+                        loginResultDiv.innerHTML = `UID: ${result.uid}, Token: ${result.token}`;
+                        document.getElementById('loginForm').style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+
+
+            // 页面加载时获取用户数据和地址数据
+            getUserData();
+            loadAddresses();
+            loadConnect();
+        });
+
+        // Toggle dropdown menus
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            dropdown.classList.toggle('show');
+        }
+
+        // Toggle tabs
+        function openTab(evt, tabName) {
+           var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // Show default tab on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Default to first tab being active
+            const defaultTab = document.querySelector('.tab-btn');
+            if (defaultTab) {
+                defaultTab.click();
+            }
+        });
+
+        // Update file name display
+        function updateFileName() {
+            const input = document.getElementById('Avatar');
+            const fileNameSpan = document.getElementById('file-name');
+            if (input.files.length > 0) {
+                fileNameSpan.textContent = input.files[0].name;
+            } else {
+                fileNameSpan.textContent = 'No file selected';
+            }
+        }
+
+        // Default to showing profile section with first tab active
+        document.addEventListener('DOMContentLoaded', function() {
+            showSection('profileSection');
+            const defaultTab = document.querySelector('.tab-btn');
+            if (defaultTab) {
+                defaultTab.click();
+            }
+
+            // Setup dropdown menu items
+            document.querySelectorAll('.dropdown-item').forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sectionId = this.getAttribute('data-section');
+                    showSection(sectionId);
+
+                    // If this is the profile section, show the first tab
+                    if (sectionId === 'profileSection') {
+                        const firstTabBtn = document.querySelector('.tab-btn');
+                        if (firstTabBtn) {
+                            firstTabBtn.click();
+                        }
+                    }
+                });
+            });
+        });
+
+        // Toggle dropdown menus
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            dropdown.classList.toggle('show');
+        }
+
+        // Toggle tabs (only in profile section)
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function showSection(sectionId) {
+            // Hide all sections
+            document.getElementById('profileSection').style.display = 'none';
+            document.getElementById('verificationSection').style.display = 'none';
+            document.getElementById('notificationsSection').style.display = 'none';
+
+            // Show the selected section
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        // Update file name display
+        function updateFileName() {
+            const input = document.getElementById('Avatar');
+            const fileNameSpan = document.getElementById('file-name');
+            if (input.files.length > 0) {
+                fileNameSpan.textContent = input.files[0].name;
+            } else {
+                fileNameSpan.textContent = 'No file selected';
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="user-profile">
+                <div class="user-name"></div>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active">
+                        <i class="fa fa-gauge"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="javascript:void(0)" class="nav-link" onclick="toggleDropdown('accountDropdown')">
+                        <i class="fa fa-user-circle"></i>
+                        <span>Account</span>
+                    </a>
+                    <div class="dropdown-content" id="accountDropdown">
+                        <a href="#" class="dropdown-item" data-section="profileSection">Profile</a>
+                        <a href="#" class="dropdown-item" data-section="verificationSection">Verification</a>
+                        <a href="#" class="dropdown-item" data-section="notificationsSection">Notifications</a>
+                    </div>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fa fa-users"></i>
+                        <span>Groups</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fa fa-calendar"></i>
+                        <span>Calendar</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fa fa-envelope"></i>
+                        <span>Messages</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="javascript:void(0)" class="nav-link" onclick="toggleDropdown('settingsDropdown')">
+                        <i class="fa fa-gear"></i>
+                        <span>Settings & Privacy</span>
+                    </a>
+                    <div class="dropdown-content" id="settingsDropdown">
+                        <a href="@Url.Action("Settings", "Home")" class="dropdown-item">Settings</a>
+                        <a href="@Url.Action("Privacy", "Home")" class="dropdown-item">Privacy Policy</a>
+                    </div>
+                </li>
+
+                <li class="nav-item">
+                    <form asp-action="Logout" method="post">
+                        <button type="submit" class="nav-link" style="width:100%; text-align:left; border:none; background:none;">
+                            <i class="fa fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="card">
+                <div class="card-header">
+                    <h1 id="userAccountTitle"></h1>
+                </div>
+                <div class="card-body">
+                    <!-- Account Sections -->
+                    <div id="profileSection" class="account-section" style="margin-top: 450px;">
+                        <!-- 添加 margin-top 属性 -->
+                        <h2>Profile</h2>
+                        <!-- Tab Navigation -->
+                        <div class="tabs">
+                            <button class="tab-btn" onclick="openTab(event, 'ProfileInfoTab')">Profile Information</button>
+                            <button class="tab-btn" onclick="openTab(event, 'AddressesTab')">Addresses</button>
+                            <button class="tab-btn" onclick="openTab(event, 'ConnectTab')">Contact</button>
+                            <button class="tab-btn" onclick="openTab(event, 'RegisterApiTab')">Register for Other API</button>
+                        </div>
+
+                        <!-- Profile Information Tab -->
+                        <div id="ProfileInfoTab" class="tab-content">
+                            <form id="updateUserForm" method="post" asp-action="UpdateUser" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col col-md-6 col-sm-12">
+                                        <div class="form-group">
+                                            <label for="UserName">UserName</label>
+                                            <input type="text" id="UserName" name="UserName" class="form-control" required />
+                                            <span class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col col-md-6 col-sm-12">
+                                        <div class="form-group">
+                                            <label for="Name">Name</label>
+                                            <input type="text" id="Name" name="Name" class="form-control" />
+                                            <span class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col col-md-6 col-sm-12">
+                                        <div class="form-group">
+                                            <label for="Name_Last">Name_Last</label>
+                                            <input type="text" id="Name_Last" name="Name_Last" class="form-control" />
+                                            <span class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col col-md-6 col-sm-12">
+                                        <div class="form-group">
+                                            <label for="ProfileIntroduction">ProfileIntroduction</label>
+                                            <input type="text" id="ProfileIntroduction" name="ProfileIntroduction" class="form-control" />
+                                            <span class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col col-md-6 col-sm-12">
+                                        <div class="form-group">
+                                            <label for="Type">Type</label>
+                                            <input type="text" id="Type" name="Type" class="form-control" />
+                                            <span class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group mt-4">
+                                    <button type="submit" id="saveMemberInfo" class="btn">Save Profile Information</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Addresses Tab -->
+                        <div id="AddressesTab" class="tab-content">
+                            <div class="mb-4">
+                                <a href="@Url.Action("Create")" class="btn">Add New Address</a>
+                            </div>
+
+                            <div id="addressTable" style="max-height: 300px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>AddressType</th>
+                                            <th>City</th>
+                                            <th>PostCode</th>
+                                            <th>Country</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="addressTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="noAddressesMessage" class="card" style="display: none;">
+                                <div class="card-body text-center">
+                                    <p>You don't have any addresses yet. Click the "Add New Address" button to add one.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="ConnectTab" class="tab-content">
+                            <div class="mb-4">
+                                <a href="@Url.Action("CreateConnect")" class="btn">Add New Contact</a>
+                            </div>
+
+                            <div id="connectTable" style="max-height: 300px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ContactType</th>
+                                            <th>ContactDetail</th>
+                                            <th>Verified</th>
+                                            <th>Notes</th>
+                                            <th>PublicPrivate</th>
+                                            <th>PostDate</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="connectTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="noConnectMessage" class="card" style="display: none;">
+                                <div class="card-body text-center">
+                                    <p>You don't have any contact yet. Click the "Add New Contact" button to add one.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="RegisterApiTab" class="tab-content">
+                            <div id="loginForm">
+                                <h2>Login</h2>
+                                <form id="loginSubmitForm">
+                                    <label for="loginUsername">Username:</label>
+                                    <input type="text" id="loginUsername" name="loginUsername" required><br>
+                                    <label for="loginPassword">Password:</label>
+                                    <input type="password" id="loginPassword" name="loginPassword" required><br>
+                                    <input type="submit" value="Login" class="btn">
+                                    <button type="button" id="showRegisterForm" class="btn">register</button>
+                                </form>
+                            </div>
+                            <div id="registerForm">
+                                <h2>Register</h2>
+                                <form id="registerSubmitForm">
+                                    <label for="username">Username:</label>
+                                    <input type="text" id="username" name="username" required><br>
+                                    <label for="firstName">FirstName:</label>
+                                    <input type="text" id="firstName" name="firstName" required><br>
+                                    <label for="lastName">LastName:</label>
+                                    <input type="text" id="lastName" name="lastName" required><br>
+                                    <label for="email">Email:</label>
+                                    <input type="email" id="email" name="email" required><br>
+                                    <label for="birthDate">Birth Date:</label>
+                                    <input type="date" id="birthDate" name="birthDate" required><br>
+                                    <label for="password">Password:</label>
+                                    <input type="password" id="password" name="password" required><br>
+                                    <label for="confirmPassword">Confirm Password:</label>
+                                    <input type="password" id="confirmPassword" name="confirmPassword" required><br>
+                                    <input type="submit" value="Register" class="btn">
+                                    <button type="button" id="showLoginForm" class="btn">return login</button>
+                                </form>
+                            </div>
+                            <div id="loginResult"></div>
+                        </div>
+                    </div>
+
+                    <div id="verificationSection" class="account-section" style="display: none;">
+                        <h2>Verification</h2>
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3>Email Verification</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col col-md-8">
+                                        <p>Your primary email is: <strong id="userEmail"></strong></p>
+                                        <div class="mt-3">
+                                            <p>
+                                                <i class="fa fa-check-circle" style="color: var(--success-color);"></i>
+                                                Your primary email has been verified
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="col col-md-4 text-right">
+                                        <button class="btn">Reverify Email</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3>Two-Factor Authentication</h3>
+                            </div>
+                            <div class="card-body">
+                                <p>Enhance your account security by enabling two-factor authentication.</p>
+                                <p>When enabled, you'll be required to enter a verification code sent to your email or phone each time you log in.</p>
+
+                                <div class="form-group mt-3">
+                                    <button class="btn">Set Up Two-Factor Authentication</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Password Management</h3>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" asp-action="UpdatePassword">
+                                    <div class="form-group">
+                                        <label for="CurrentPassword">Current Password</label>
+                                        <input type="password" id="CurrentPassword" name="CurrentPassword" class="form-control" required />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="NewPassword">New Password</label>
+                                        <input type="password" id="NewPassword" name="NewPassword" class="form-control" required />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="ConfirmPassword">Confirm New Password</label>
+                                        <input type="password" id="ConfirmPassword" name="ConfirmPassword" class="form-control" required />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <button type="submit" class="btn">Update Password</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="notificationsSection" class="account-section" style="display: none;">
+                        <h2>Notifications</h2>
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3>Notification Preferences</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-3">Choose how you want to receive notifications from Cobble.</p>
+
+                                <form method="post" asp-action="UpdateNotifications">
+                                    <div class="form-group">
+                                        <h4>Email Notifications</h4>
+
+                                        <div class="mb-2" style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                                            <div style="flex: 1;">
+                                                <label for="notify_updates">System Updates & Announcements</label>
+                                                <p class="m-0" style="color: var(--text-light); font-size: 0.85rem;">Receive notifications about system updates, maintenance, and important announcements.</p>
+                                            </div>
+                                            <div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="notify_updates" name="notify_updates" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2" style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                                            <div style="flex: 1;">
+                                                <label for="notify_security">Security Alerts</label>
+                                                <p class="m-0" style="color: var(--text-light); font-size: 0.85rem;">Receive notifications about account security such as password changes or login attempts.</p>
+                                            </div>
+                                            <div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="notify_security" name="notify_security" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2" style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                                            <div style="flex: 1;">
+                                                <label for="notify_groups">Group Activity</label>
+                                                <p class="m-0" style="color: var(--text-light); font-size: 0.85rem;">Receive notifications about activity in your groups, including new messages and updates.</p>
+                                            </div>
+                                            <div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="notify_groups" name="notify_groups" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2" style="display: flex; align-items: center; padding: 10px 0;">
+                                            <div style="flex: 1;">
+                                                <label for="notify_calendar">Calendar Reminders</label>
+                                                <p class="m-0" style="color: var(--text-light); font-size: 0.85rem;">Receive reminders about upcoming events and appointments.</p>
+                                            </div>
+                                            <div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="notify_calendar" name="notify_calendar" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mt-4">
+                                        <h4>SMS/Text Notifications</h4>
+
+                                        <div class="mb-2" style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                                            <div style="flex: 1;">
+                                                <label for="sms_security">Security Alerts</label>
+                                                <p class="m-0" style="color: var(--text-light); font-size: 0.85rem;">Receive SMS notifications for critical security alerts.</p>
+                                            </div>
+                                            <div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="sms_security" name="sms_security">
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2" style="display: flex; align-items: center; padding: 10px 0;">
+                                            <div style="flex: 1;">
+                                                <label for="sms_calendar">Calendar Reminders</label>
+                                                <p class="m-0" style="color: var(--text-light); font-size: 0.85rem;">Receive SMS reminders for upcoming events.</p>
+                                            </div>
+                                            <div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="sms_calendar" name="sms_calendar">
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group mt-4">
+                                        <button type="submit" class="btn">Save Notification Preferences</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Notification History</h3>
+                            </div>
+                            <div class="card-body">
+                                <p>View your recent notifications and messages.</p>
+
+                                <div class="table-container mt-3">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Type</th>
+                                                <th>Message</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>@DateTime.Now.AddDays(-1).ToString("MMM dd, yyyy")</td>
+                                                <td>Security</td>
+                                                <td>Your account password was successfully updated.</td>
+                                            </tr>
+                                            <tr>
+                                                <td>@DateTime.Now.AddDays(-3).ToString("MMM dd, yyyy")</td>
+                                                <td>System</td>
+                                                <td>Cobble will undergo scheduled maintenance on @DateTime.Now.AddDays(5).ToString("MMM dd, yyyy").</td>
+                                            </tr>
+                                            <tr>
+                                                <td>@DateTime.Now.AddDays(-7).ToString("MMM dd, yyyy")</td>
+                                                <td>Calendar</td>
+                                                <td>Reminder: Team meeting scheduled for tomorrow.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .account-section h2 {
+            margin-bottom: 1.5rem;
+            color: var(--primary-dark);
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+    </style>
+</body>
+</html>    

@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>40e1d6c0-2bdc-4d46-892d-7759cfdefdcd</UserSecretsId>
+		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+		<DockerfileContext>.</DockerfileContext>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="Dockerfile" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="Dockerfile">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+		<PackageReference Include="SendGrid" Version="9.29.3" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+	</ItemGroup>
+
+</Project>

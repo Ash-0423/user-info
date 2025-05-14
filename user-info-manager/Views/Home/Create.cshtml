@@ -1,0 +1,151 @@
+﻿@model UserInfoManager.Models.UserAddress
+
+@{
+    ViewData["Title"] = "Create User Address";
+}
+
+<!-- 引入 jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<!-- 引入 jQuery UI 库 -->
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+<h1>Create User Address</h1>
+
+<form id="createAddressForm">
+    <div class="form-group">
+        <label for="AddressType">AddressType</label>
+        <select id="AddressType" class="form-control" required>
+            <option value="HOM">Home</option>
+            <option value="COM">Company</option>
+            <option value="BIL">Billing</option>
+            <option value="SHI">Shipping</option>
+            <option value="EMG">Emergency</option>
+            <option value="SCH">School</option>
+        </select>
+        <span id="AddressType-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Address1">Address1</label>
+        <input type="text" id="Address1" class="form-control" required />
+        <span id="Address1-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Address2">Address2</label>
+        <input type="text" id="Address2" class="form-control" required />
+        <span id="Address2-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Address3">Address3</label>
+        <input type="text" id="Address3" class="form-control" required />
+        <span id="Address3-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="City">City</label>
+        <input type="text" id="City" class="form-control" required />
+        <span id="City-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="PostCode">PostCode</label>
+        <input type="text" id="PostCode" class="form-control" required />
+        <span id="PostCode-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="RegionalCouncil">RegionalCouncil</label>
+        <input type="text" id="RegionalCouncil" class="form-control" required />
+        <span id="RegionalCouncil-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="State">State</label>
+        <input type="text" id="State" class="form-control" required />
+        <span id="State-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label for="Country">Country</label>
+        <select id="Country" class="form-control" required>
+        </select>
+        <span id="Country-error" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label>PublicPrivate</label>
+        <input type="radio" checked id="publicOption" name="PublicPrivate" value="1" class="form-check-input" required>
+        <label for="publicOption" class="form-check-label">Public</label>
+        <input type="radio" id="privateOption" name="PublicPrivate" value="2" class="form-check-input" required>
+        <label for="privateOption" class="form-check-label">Private</label>
+        <span id="PublicPrivate-error" class="text-danger"></span>
+    </div>
+    <button type="button" id="createAddressBtn" class="btn btn-primary">Create</button>
+    <div id="validationSummary" class="validation-summary-errors" style="display: none;"></div>
+</form>
+
+<script>
+    $(document).ready(function () {
+        const token = localStorage.getItem('jwtToken');
+
+        $.ajaxSetup({
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        // 获取国家列表
+        $.ajax({
+            url: `@(ViewBag.ApiHost)/module/Lookups/get-lookups?lookupType=Country`,
+            type: 'GET',
+            success: function (data) {
+                const countries = data.data;
+                const countrySelect = $('#Country');
+                countries.forEach(country => {
+                    countrySelect.append(`<option value="${country.lookupID}">${country.description}</option>`);
+                });
+            },
+            error: function (error) {
+                console.error('Error getting countries:', error);
+            }
+        });
+
+        // 创建按钮点击事件
+        $('#createAddressBtn').on('click', function () {
+            const formData = {
+                AddressType: $('#AddressType').val(),
+                Address1: $('#Address1').val(),
+                Address2: $('#Address2').val(),
+                Address3: $('#Address3').val(),
+                City: $('#City').val(),
+                PostCode: $('#PostCode').val(),
+                RegionalCouncil: $('#RegionalCouncil').val(),
+                State: $('#State').val(),
+                Country: parseInt($('#Country').val()),
+                PublicPrivate: $('input[name="PublicPrivate"]:checked').val()
+            };
+
+            // 清空错误信息
+            $('.text-danger').text('');
+            $('#validationSummary').hide().empty();
+
+            // 使用 AJAX 提交表单数据
+            $.ajax({
+                url: `@(ViewBag.ApiHost)/module/Account/create-address`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function (response) {
+                    alert('Address created successfully.');
+                    // 清空表单
+                    $('#createAddressForm')[0].reset();
+                },
+                error: function (error) {
+                    if (error.responseJSON && error.responseJSON.errors) {
+                        const errors = error.responseJSON.errors;
+                        for (const field in errors) {
+                            const errorMessage = errors[field][0];
+                            $(`#${field}-error`).text(errorMessage);
+                        }
+                    } else {
+                        $('#validationSummary').show().append(`<span>An error occurred: ${error.statusText}</span><br />`);
+                    }
+                }
+            });
+        });
+    });
+</script>    
