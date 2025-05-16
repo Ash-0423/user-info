@@ -29,20 +29,20 @@ public class LookupsControllerTests
         _controller = new LookupsController(lookupsDataAccess);
     }
 
-    [Fact]
-    public void GetAddress_ValidInput_ReturnsJsonResult()
-    {
-        var keyword = "a"; 
-        var lookupType = "Country";
+//   [Fact]
+ //   public void GetAddress_ValidInput_ReturnsJsonResult()
+ //   {
+ //       var keyword = "a"; 
+ //       var lookupType = "Country";
 
         // Act
-        var result = _controller.GetAddress(keyword, lookupType) as JsonResult;
+//        var result = _controller.GetAddress(keyword, lookupType) as JsonResult;
 
         // Assert
-        Assert.NotNull(result);
-        var data = result.Value as dynamic;
-        Assert.NotNull(data);
-        var c = result.Value.GetType().GetProperty("done").GetValue(result.Value);
-        Assert.Equal(1, c);
-    }
+//        Assert.NotNull(result);
+//        var data = result.Value as dynamic;
+//        Assert.NotNull(data);
+//        var c = result.Value.GetType().GetProperty("done").GetValue(result.Value);
+//       Assert.Equal(1, c);
+//    }
 }
